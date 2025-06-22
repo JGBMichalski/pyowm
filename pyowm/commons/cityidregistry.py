@@ -4,7 +4,14 @@
 import bz2
 import sqlite3
 import tempfile
-from pkg_resources import resource_filename
+# Use importlib.resources for resource access (Python 3.7+)
+try:
+    from importlib.resources import files as resource_files
+    from importlib.resources import as_file
+except ImportError:
+    # For Python <3.9, fallback to importlib_resources
+    from importlib_resources import files as resource_files
+    from importlib_resources import as_file
 from pyowm.weatherapi30.location import Location
 
 CITY_ID_DB_PATH = 'cityids/cities.db.bz2'
@@ -34,26 +41,23 @@ class CityIDRegistry:
         :param sqlite_db_path: str
         :return: None
         """
-        # https://stackoverflow.com/questions/3850022/how-to-load-existing-db-file-to-memory-in-python-sqlite3
-        # https://stackoverflow.com/questions/32681761/how-can-i-attach-an-in-memory-sqlite-database-in-python
-        # https://pymotw.com/2/bz2/
+        # Use importlib.resources to access the resource file
+        resource = resource_files(__package__).joinpath(sqlite_db_path)
+        with as_file(resource) as res_name:
+            bz2_db = bz2.BZ2File(res_name)
+            decompressed_data = bz2_db.read()
 
-        # read and uncompress data from compressed DB
-        res_name = resource_filename(__name__, sqlite_db_path)
-        bz2_db = bz2.BZ2File(res_name)
-        decompressed_data = bz2_db.read()
+            # dump decompressed data to a temp DB
+            with tempfile.NamedTemporaryFile(mode='wb') as tmpf:
+                tmpf.write(decompressed_data)
+                tmpf_name = tmpf.name
 
-        # dump decompressed data to a temp DB
-        with tempfile.NamedTemporaryFile(mode='wb') as tmpf:
-            tmpf.write(decompressed_data)
-            tmpf_name = tmpf.name
-
-            # read temp DB to memory and return handle
-            src_conn = sqlite3.connect(tmpf_name)
-            dest_conn = sqlite3.connect(':memory:')
-            src_conn.backup(dest_conn)
-            src_conn.close()
-            return dest_conn
+                # read temp DB to memory and return handle
+                src_conn = sqlite3.connect(tmpf_name)
+                dest_conn = sqlite3.connect(':memory:')
+                src_conn.backup(dest_conn)
+                src_conn.close()
+                return dest_conn
 
     def __query(self, sql_query: str, *args):
         """

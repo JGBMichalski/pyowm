@@ -16,7 +16,8 @@ dependencies = [
     "requests>=2.20.0,<3",
     "geojson>=2.3.0,<3",
     "PySocks>=1.7.1,<2",
-    "requests[socks]"
+    "requests[socks]",
+    "importlib_resources>=5.1; python_version < '3.9'"
 ]
 keywords = [
     "openweathermap", "web", "api", "client", "weather", "forecast", "uv", "alerting", "owm", "pollution", "meteostation", "agro", "agriculture"

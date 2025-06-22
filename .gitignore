@@ -17,4 +17,4 @@ tests/proxy/.tox/*
 .eggs/
 htmlcov/*
 venv
-
+env
